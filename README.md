@@ -4,6 +4,13 @@ The `RedisStore` is a storage plugin for the [DinoDNS DNS framework](https://git
 
 It provides a simple API for storing and retrieving DNS records from a Redis database.
 
+Records are stored in Redis using hash sets, with keys consisting of inverted, colon-joined domain names.
+
+That is, the domain `example.com` would be stored as `com:example`. Record types are stored as keys
+under the domain names.
+
+Wildcard queries are supported. For more information, read the [get method](#get) documentation.
+
 ## Installation
 
 `npm i @dinodns/redis-store`
