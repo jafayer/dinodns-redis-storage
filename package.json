@@ -1,7 +1,7 @@
 {
-  "name": "dinodns-redis-store",
-  "version": "1.0.0",
-  "description": "A redis storage plugin for DinoDNS",
+  "name": "@dinodns/redis-store",
+  "version": "0.1.0",
+  "description": "A Redis/Valkey storage plugin for DinoDNS",
   "main": "index.js",
   "scripts": {
     "build": "tsc -b -v",
@@ -23,7 +23,7 @@
     "publish": "npm publish"
   },
   "keywords": [],
-  "author": "",
+  "author": "Josh Fayer <contact@fayer.me>",
   "license": "ISC",
   "devDependencies": {
     "@types/dns-packet": "^5.6.5",
@@ -50,5 +50,17 @@
     "ioredis": "^5.4.1",
     "lodash": "^4.17.21",
     "typescript-eslint": "^8.8.0"
-  }
+  },
+  "directories": {
+    "example": "examples",
+    "test": "tests"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jafayer/dinodns-redis-storage.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jafayer/dinodns-redis-storage/issues"
+  },
+  "homepage": "https://github.com/jafayer/dinodns-redis-storage#readme"
 }
