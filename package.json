@@ -19,7 +19,6 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "prepublishOnly": "npm run build:clean",
     "postpublish": "git push --follow-tags",
     "publish": "npm run build:clean && cp package.json dist/package.json && cp tsconfig.json dist/tsconfig.json && cd dist && npm publish",
     "package": "npm run build:clean && cp package.json dist/package.json && cd dist && npm pack"
