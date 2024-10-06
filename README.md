@@ -64,7 +64,7 @@ _Note: enabling wildcard matching may incur a small performance penalty but shou
 Sets DNS records in the Redis store, overwriting anything that is there for the record type.
 
 ```typescript
-await store.set(name: string, rType: 'A' | 'AAAA', data: SupportedAnswer | SupportedAnswer[]);
+await store.set(name: string, rType: SupportedRecordType, data: SupportedAnswer | SupportedAnswer[]);
 ```
 
 - `name`: The domain name to set a record for.
@@ -76,7 +76,7 @@ await store.set(name: string, rType: 'A' | 'AAAA', data: SupportedAnswer | Suppo
 Appends DNS records to the existing records in the Redis store.
 
 ```typescript
-await store.append(name: string, rType: 'A' | 'AAAA', data: SupportedAnswer);
+await store.append(name: string, rType: SupportedRecordType, data: SupportedAnswer);
 ```
 
 - `name`: The domain name to append records to.
@@ -87,6 +87,10 @@ await store.append(name: string, rType: 'A' | 'AAAA', data: SupportedAnswer);
 
 Deletes DNS records from the Redis store. If an rType is not provided, the whole matching zone's records will be deleted. If an `Answer` object is not provided in the data argument, the entire record type will be deleted for that zone. Answers are matched using deep equality.
 
+```typescript
+await store.delete(name: string, rType?: SupportedRecordType, data?: SupportedAnswer);
+```
+
 - `name`: The domain name to delete records from.
-- `rType`: The record type ('A' or 'AAAA'). Optional.
+- `rType`: The record type. Optional.
 - `data`: The specific DNS record to delete. Optional.
