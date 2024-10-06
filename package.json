@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "A Redis/Valkey storage plugin for DinoDNS",
   "main": "index.js",
+  "types": "index.d.ts",
   "scripts": {
     "build": "tsc -b -v",
     "build:clean": "rm -rf dist && tsc -b -v --incremental false",
@@ -20,7 +21,8 @@
     "format:check": "prettier --check .",
     "prepublishOnly": "npm run build:clean",
     "postpublish": "git push --follow-tags",
-    "publish": "npm publish"
+    "publish": "cp package.json dist/package.json && cd dist && npm publish",
+    "package": "npm run build:clean && cp package.json dist/package.json && cd dist && npm pack"
   },
   "keywords": [],
   "author": "Josh Fayer <contact@fayer.me>",
