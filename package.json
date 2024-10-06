@@ -1,7 +1,7 @@
 {
-  "name": "ts-starter",
+  "name": "dinodns-redis-store",
   "version": "1.0.0",
-  "description": "There are many like it, but this one is mine.",
+  "description": "A redis storage plugin for DinoDNS",
   "main": "index.js",
   "scripts": {
     "build": "tsc -b -v",
@@ -26,6 +26,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@types/dns-packet": "^5.6.5",
     "@types/jest": "^29.5.12",
     "@typescript-eslint/eslint-plugin": "^7.8.0",
     "@typescript-eslint/parser": "^7.8.0",
@@ -43,8 +44,11 @@
     "typescript": "^5.4.5"
   },
   "dependencies": {
+    "@types/lodash": "^4.17.10",
     "dinodns": "^0.0.6",
+    "dns-packet": "^5.6.1",
     "ioredis": "^5.4.1",
+    "lodash": "^4.17.21",
     "typescript-eslint": "^8.8.0"
   }
 }
