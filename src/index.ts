@@ -1,17 +1,38 @@
 import type { Store, SupportedAnswer, Handler } from 'dinodns';
+import {SupportedRecordType, ZoneData} from "dinodns/types/dns";
 import Redis from 'ioredis';
 import type { RedisOptions } from 'ioredis';
 import { Answer, RecordType } from 'dns-packet';
 import { isEqual as _isEqual } from 'lodash';
+import {EventEmitter} from 'events';
 
-export class RedisStore implements Store {
+export type RedisStoreOptions = {
+
+  /** An optional redis client */
+  client?: Redis;
+  
+  /** Whether the store should emit cache requests. Defaults to true. */
+  shouldCache?: boolean;
+
+} & RedisOptions;
+
+export class RedisStore extends EventEmitter implements Store {
   private client: Redis;
+  private shouldCache = true;
 
-  constructor(redisClient: Redis);
-  constructor(redisOptions: RedisOptions);
-  constructor(options: RedisOptions | Redis) {
-    if (options instanceof Redis) {
-      this.client = options;
+  constructor(options: RedisStoreOptions) {
+    super();
+
+    if (!options) {
+      throw new Error('RedisStore requires options');
+    }
+
+    if(options.shouldCache) {
+      this.shouldCache = options.shouldCache;
+    }
+
+    if (options.client) {
+      this.client = options.client;
 
       return;
     }
@@ -19,7 +40,7 @@ export class RedisStore implements Store {
     this.client = new Redis(options);
   }
 
-  async get(name: string, rType?: Exclude<RecordType, 'OPT'>, wildcards = true): Promise<Answer | Answer[] | null> {
+  async get<T extends SupportedRecordType>(name: string, rType?: T, wildcards = true): Promise<ZoneData[T][] | ZoneData[keyof ZoneData][] | null> {
     let key = this.nameToKey(name);
     // first attempt to get the data from the exact match
     if (rType) {
@@ -52,15 +73,14 @@ export class RedisStore implements Store {
       if (rType) {
         const data = await this.client.hget(wildcardKey, rType);
         if (data) {
-          return JSON.parse(data).map((d: Answer) => ({ ...d, name }));
+          return JSON.parse(data);
         }
       } else {
         const data = await this.client.hgetall(wildcardKey);
         if (data && Object.keys(data).length > 0) {
           return Object.values(data)
             .map((d) => JSON.parse(d))
-            .flat()
-            .map((d: Answer) => ({ ...d, name }));
+            .flat();
         }
       }
     }
@@ -75,15 +95,13 @@ export class RedisStore implements Store {
    * @param data The data to store
    * @returns
    */
-  async set(name: string, rType: Exclude<RecordType, 'OPT'>, data: SupportedAnswer | SupportedAnswer[]): Promise<void> {
+  async set<T extends SupportedRecordType>(name: string, rType: T, data: ZoneData[T] | ZoneData[T][]): Promise<void> {
     const key = this.nameToKey(name);
-    if (Array.isArray(data)) {
-      await this.client.hset(key, rType, JSON.stringify(data));
-
-      return;
+    if(!Array.isArray(data)) {
+      data = [data];
     }
 
-    await this.client.hset(key, rType, JSON.stringify([data]));
+    await this.client.hset(key, rType, JSON.stringify(data));
   }
 
   /**
@@ -92,7 +110,7 @@ export class RedisStore implements Store {
    * @param rType
    * @param data
    */
-  async append(name: string, rType: Exclude<RecordType, 'OPT'>, data: SupportedAnswer): Promise<void> {
+  async append<T extends SupportedRecordType>(name: string, rType: T, data: ZoneData[T]): Promise<void> {
     const key = this.nameToKey(name);
     const existingData = await this.client.hget(key, rType);
     if (existingData) {
@@ -106,14 +124,14 @@ export class RedisStore implements Store {
     await this.client.hset(key, rType, JSON.stringify([data]));
   }
 
-  async delete(name: string, rType?: Exclude<RecordType, 'OPT'>, rData?: SupportedAnswer): Promise<void> {
+  async delete<T extends SupportedRecordType>(name: string, rType?: T, rData?: ZoneData[T]): Promise<void> {
     const key = this.nameToKey(name);
 
     if (rType && rData) {
       const existingData = await this.client.hget(key, rType);
       if (existingData) {
         const parsedData = JSON.parse(existingData);
-        const newData = parsedData.filter((d: Answer) => !_isEqual(d, rData));
+        const newData = parsedData.filter((d: ZoneData[T]) => !_isEqual(d, rData));
         if (newData.length === 0) {
           await this.client.hdel(key, rType);
 
@@ -132,7 +150,7 @@ export class RedisStore implements Store {
       return;
     }
 
-    await this.client.hdel(key);
+    await this.client.del(key);
 
     return;
   }
@@ -143,12 +161,35 @@ export class RedisStore implements Store {
 
   handler: Handler = async (req, res, next) => {
     const { name, type } = req.packet.questions[0];
+    console.log('RedisStore: Handling request for', name, type);
     const result = await this.get(name, type as Exclude<RecordType, 'OPT'>);
+    console.log(result);
     if (result) {
-      // @ts-ignore
-      res.answer(result);
+      const answers: SupportedAnswer[] = result.map((data) => {
+        return {
+          name,
+          type,
+          data,
+        } as SupportedAnswer;
+      });
+
+      console.log('RedisStore: Found data for', name, type, answers);
+
+      res.answer(answers);
+      
+      if(this.shouldCache) {
+        this.emitCacheRequest(name, type, result);
+      }
     }
 
     next();
   };
+
+  async emitCacheRequest<T extends SupportedRecordType>(zone: string, rType: T, records: ZoneData[T][]) {
+    this.emit('cacheRequest', {
+      zoneName: zone,
+      recordType: rType,
+      records: records,
+    });
+  }
 }
