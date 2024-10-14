@@ -10,15 +10,9 @@ jest.mock('ioredis');
 describe('RedisStore', () => {
   let store: RedisStore;
   let client: Redis;
-  const ARecords: ZoneData['A'][] = [
-    '127.0.0.1',
-    '127.0.0.2'
-  ];
+  const ARecords: ZoneData['A'][] = ['127.0.0.1', '127.0.0.2'];
 
-  const AAAARecords: ZoneData['AAAA'][] = [
-    '::1',
-    '::2'
-  ];
+  const AAAARecords: ZoneData['AAAA'][] = ['::1', '::2'];
 
   const internalData = {
     A: JSON.stringify(ARecords),
@@ -27,13 +21,13 @@ describe('RedisStore', () => {
 
   beforeEach(() => {
     client = new Redis();
-    store = new RedisStore({client});
+    store = new RedisStore({ client });
   });
 
   describe('create', () => {
     it('should be able to create a redis store with a passed in client', () => {
       const client = new Redis();
-      const store = new RedisStore({client});
+      const store = new RedisStore({ client });
       expect(store).toBeInstanceOf(RedisStore);
     });
 
