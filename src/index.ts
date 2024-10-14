@@ -1,19 +1,17 @@
 import type { Store, SupportedAnswer, Handler } from 'dinodns';
-import {SupportedRecordType, ZoneData} from "dinodns/types/dns";
+import { SupportedRecordType, ZoneData } from 'dinodns/types/dns';
 import Redis from 'ioredis';
 import type { RedisOptions } from 'ioredis';
 import { Answer, RecordType } from 'dns-packet';
 import { isEqual as _isEqual } from 'lodash';
-import {EventEmitter} from 'events';
+import { EventEmitter } from 'events';
 
 export type RedisStoreOptions = {
-
   /** An optional redis client */
   client?: Redis;
-  
+
   /** Whether the store should emit cache requests. Defaults to true. */
   shouldCache?: boolean;
-
 } & RedisOptions;
 
 export class RedisStore extends EventEmitter implements Store {
@@ -27,7 +25,7 @@ export class RedisStore extends EventEmitter implements Store {
       throw new Error('RedisStore requires options');
     }
 
-    if(options.shouldCache) {
+    if (options.shouldCache) {
       this.shouldCache = options.shouldCache;
     }
 
@@ -40,7 +38,11 @@ export class RedisStore extends EventEmitter implements Store {
     this.client = new Redis(options);
   }
 
-  async get<T extends SupportedRecordType>(name: string, rType?: T, wildcards = true): Promise<ZoneData[T][] | ZoneData[keyof ZoneData][] | null> {
+  async get<T extends SupportedRecordType>(
+    name: string,
+    rType?: T,
+    wildcards = true,
+  ): Promise<ZoneData[T][] | ZoneData[keyof ZoneData][] | null> {
     let key = this.nameToKey(name);
     // first attempt to get the data from the exact match
     if (rType) {
@@ -97,7 +99,7 @@ export class RedisStore extends EventEmitter implements Store {
    */
   async set<T extends SupportedRecordType>(name: string, rType: T, data: ZoneData[T] | ZoneData[T][]): Promise<void> {
     const key = this.nameToKey(name);
-    if(!Array.isArray(data)) {
+    if (!Array.isArray(data)) {
       data = [data];
     }
 
@@ -176,8 +178,8 @@ export class RedisStore extends EventEmitter implements Store {
       console.log('RedisStore: Found data for', name, type, answers);
 
       res.answer(answers);
-      
-      if(this.shouldCache) {
+
+      if (this.shouldCache) {
         this.emitCacheRequest(name, type, result);
       }
     }
