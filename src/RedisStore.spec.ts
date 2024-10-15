@@ -2,6 +2,7 @@ import { RedisStore } from '.';
 import Redis from 'ioredis';
 import { RecordType } from 'dns-packet';
 import { SupportedAnswer } from 'dinodns';
+import { ZoneData } from 'dinodns/types/dns';
 import _ from 'lodash';
 
 jest.mock('ioredis');
@@ -9,15 +10,10 @@ jest.mock('ioredis');
 describe('RedisStore', () => {
   let store: RedisStore;
   let client: Redis;
-  const ARecords: SupportedAnswer[] = [
-    { name: 'example.com', type: 'A', data: '127.0.0.1' },
-    { name: 'example.com', type: 'A', data: '127.0.0.2' },
-  ];
+  const ARecords: ZoneData['A'][] = ['127.0.0.1', '127.0.0.2'];
 
-  const AAAARecords: SupportedAnswer[] = [
-    { name: 'example.com', type: 'AAAA', data: '::1' },
-    { name: 'example.com', type: 'AAAA', data: '::2' },
-  ];
+  const AAAARecords: ZoneData['AAAA'][] = ['::1', '::2'];
+
   const internalData = {
     A: JSON.stringify(ARecords),
     AAAA: JSON.stringify(AAAARecords),
@@ -25,13 +21,13 @@ describe('RedisStore', () => {
 
   beforeEach(() => {
     client = new Redis();
-    store = new RedisStore(client);
+    store = new RedisStore({ client });
   });
 
   describe('create', () => {
     it('should be able to create a redis store with a passed in client', () => {
       const client = new Redis();
-      const store = new RedisStore(client);
+      const store = new RedisStore({ client });
       expect(store).toBeInstanceOf(RedisStore);
     });
 
@@ -156,10 +152,10 @@ describe('RedisStore', () => {
       expect(result2).toEqual([...ARecords, ...AAAARecords]);
 
       const result3 = await store.get('test.com', 'AAAA');
-      expect(result3).toEqual(AAAARecords.map((d) => ({ ...d, name: 'test.com' })));
+      expect(result3).toEqual(AAAARecords);
 
       const result4 = await store.get('test.com');
-      expect(result4).toEqual([...ARecords, ...AAAARecords].map((d) => ({ ...d, name: 'test.com' })));
+      expect(result4).toEqual([...ARecords, ...AAAARecords]);
 
       const result5 = await store.get('notinthere.net');
       expect(result5).toEqual(null);
@@ -266,6 +262,11 @@ describe('RedisStore', () => {
 
       // @ts-ignore
       client.hdel = jest.fn(async (key: string) => {
+        delete internalData[key];
+      });
+
+      // @ts-ignore
+      client.del = jest.fn(async (key: string) => {
         delete internalData[key];
       });
     });
