@@ -264,6 +264,11 @@ describe('RedisStore', () => {
       client.hdel = jest.fn(async (key: string) => {
         delete internalData[key];
       });
+
+      // @ts-ignore
+      client.del = jest.fn(async (key: string) => {
+        delete internalData[key];
+      });
     });
 
     it('should be able to delete all data from the correct key', async () => {
