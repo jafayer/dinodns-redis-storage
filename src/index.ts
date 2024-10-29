@@ -2,7 +2,7 @@ import type { Store, SupportedAnswer, Handler } from 'dinodns';
 import { SupportedRecordType, ZoneData } from 'dinodns/types/dns';
 import Redis from 'ioredis';
 import type { RedisOptions } from 'ioredis';
-import { Answer, RecordType } from 'dns-packet';
+import { RecordType } from 'dns-packet';
 import { isEqual as _isEqual } from 'lodash';
 import { EventEmitter } from 'events';
 
