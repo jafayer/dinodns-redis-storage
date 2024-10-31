@@ -1,5 +1,5 @@
-import type { Store, SupportedAnswer, Handler } from 'dinodns';
-import { SupportedRecordType, ZoneData } from 'dinodns/types/dns';
+import { Store } from 'dinodns/plugins/storage';
+import { SupportedAnswer, Handler, SupportedRecordType, ZoneData } from 'dinodns/types';
 import Redis from 'ioredis';
 import type { RedisOptions } from 'ioredis';
 import { RecordType } from 'dns-packet';
@@ -163,9 +163,7 @@ export class RedisStore extends EventEmitter implements Store {
 
   handler: Handler = async (req, res, next) => {
     const { name, type } = req.packet.questions[0];
-    console.log('RedisStore: Handling request for', name, type);
     const result = await this.get(name, type as Exclude<RecordType, 'OPT'>);
-    console.log(result);
     if (result) {
       const answers: SupportedAnswer[] = result.map((data) => {
         return {
@@ -174,8 +172,6 @@ export class RedisStore extends EventEmitter implements Store {
           data,
         } as SupportedAnswer;
       });
-
-      console.log('RedisStore: Found data for', name, type, answers);
 
       res.answer(answers);
 

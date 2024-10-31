@@ -1,7 +1,6 @@
 import { RedisStore } from '.';
 import Redis from 'ioredis';
 import { RecordType } from 'dns-packet';
-import { SupportedAnswer } from 'dinodns';
 import { ZoneData } from 'dinodns/types/dns';
 import _ from 'lodash';
 
