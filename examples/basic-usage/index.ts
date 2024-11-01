@@ -1,5 +1,4 @@
-import { DefaultServer } from 'dinodns/common/server';
-import { DNSOverTCP } from 'dinodns';
+import { DNSOverTCP, DefaultServer } from 'dinodns/common';
 import { RedisStore } from '../../src';
 
 const store = new RedisStore({
@@ -15,6 +14,7 @@ const server = new DefaultServer({
   networks: [new DNSOverTCP('localhost', 1054)],
 });
 
+server.use(store.handler);
 server.use(store.handler);
 
 server.start(() => {

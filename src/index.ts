@@ -162,6 +162,10 @@ export class RedisStore extends EventEmitter implements Store {
   }
 
   handler: Handler = async (req, res, next) => {
+    if (res.finished) {
+      return next();
+    }
+
     const { name, type } = req.packet.questions[0];
     const result = await this.get(name, type as Exclude<RecordType, 'OPT'>);
     if (result) {
