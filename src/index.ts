@@ -87,6 +87,52 @@ export class RedisStore extends EventEmitter implements Store {
       }
     }
 
+    // last check for the root wildcard
+    if (wildcards) {
+      const wildcardKey = '*';
+      if (rType) {
+        const data = await this.client.hget(wildcardKey, rType);
+        if (data) {
+          return JSON.parse(data);
+        }
+      } else {
+        const data = await this.client.hgetall(wildcardKey);
+        if (data && Object.keys(data).length > 0) {
+          return Object.values(data)
+            .map((d) => JSON.parse(d))
+            .flat();
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Resolve a queried domain name to the raw or wildcard domain name
+   * stored in the database.
+   * @param name
+   */
+  async resolve(name: string): Promise<string | null> {
+    let key = this.nameToKey(name);
+    const data = await this.client.hgetall(key);
+    if (data && Object.keys(data).length > 0) {
+      return key;
+    }
+
+    while (key !== '') {
+      key = key
+        .split(':') // already reverse sorted, split by colon
+        .toSpliced(-1, 1) // remove the least specific domain part
+        .join(':'); // rejoin the parts
+
+      const wildcardKey = key + ':*';
+      const data = await this.client.hgetall(wildcardKey);
+      if (data && Object.keys(data).length > 0) {
+        return wildcardKey.split(':').toReversed().join('.');
+      }
+    }
+
     return null;
   }
 

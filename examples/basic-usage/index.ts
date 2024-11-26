@@ -9,9 +9,10 @@ const store = new RedisStore({
 
 store.set('*.example.com', 'A', '127.0.0.2');
 store.set('example.com', 'A', '127.0.0.1');
+store.set('*', 'A', '127.0.0.1');
 
 const server = new DefaultServer({
-  networks: [new DNSOverTCP('localhost', 1054)],
+  networks: [new DNSOverTCP({ address: 'localhost', port: 1054 })],
 });
 
 server.use(store.handler);

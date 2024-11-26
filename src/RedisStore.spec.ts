@@ -42,6 +42,30 @@ describe('RedisStore', () => {
   });
 
   describe('get', () => {
+    it('should get data from a plain wildcard', async () => {
+      const name = '*';
+      const rType = 'A';
+
+      client.hget = jest.fn(async (key, rType: 'A' | 'AAAA') => {
+        if (key === '*') {
+          return internalData[rType];
+        }
+
+        return null;
+      });
+
+      client.hgetall = jest.fn(async (key) => {
+        if (key === '*') {
+          return internalData;
+        }
+
+        return {};
+      });
+
+      const result = await store.get(name, rType);
+      expect(result).toEqual(ARecords);
+    });
+
     it('should get data from the exact match', async () => {
       const name = 'example.com';
       const rType = 'A';
@@ -158,6 +182,35 @@ describe('RedisStore', () => {
 
       const result5 = await store.get('notinthere.net');
       expect(result5).toEqual(null);
+    });
+  });
+
+  describe('resolve', () => {
+    it('should be able to resolve a name to a key', async () => {
+      const name = 'example.com';
+      const key = store.nameToKey(name);
+      const data = { A: '127.0.0.1' };
+
+      client.hgetall = jest.fn(async (key) => {
+        if (key === 'com:example') {
+          return internalData;
+        }
+
+        if (key === 'com:example:*') {
+          return internalData;
+        }
+
+        return {};
+      });
+
+      const result = await store.resolve(name);
+      expect(result).toEqual(key);
+
+      const result2 = await store.resolve('test.com');
+      expect(result2).toEqual(null);
+
+      const result3 = await store.resolve('test.example.com');
+      expect(result3).toEqual('*.example.com');
     });
   });
 
@@ -330,6 +383,12 @@ describe('RedisStore', () => {
       const name = '*.example.com';
       const key = store.nameToKey(name);
       expect(key).toEqual('com:example:*');
+    });
+
+    it('should convert a top-level wildcard name to the correct representation', () => {
+      const name = '*';
+      const key = store.nameToKey(name);
+      expect(key).toEqual('*');
     });
   });
 });
