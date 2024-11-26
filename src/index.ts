@@ -87,6 +87,27 @@ export class RedisStore extends EventEmitter implements Store {
       }
     }
 
+    // last check for the root wildcard
+    if (wildcards) {
+      const wildcardKey = '*';
+      if (rType) {
+        const data = await this.client.hget(wildcardKey, rType);
+        if (data) {
+          return JSON.parse(data);
+        }
+      } else {
+        const data = await this.client.hgetall(wildcardKey);
+        if (data && Object.keys(data).length > 0) {
+          return Object.values(data)
+            .map((d) => JSON.parse(d))
+            .flat();
+        }
+      }
+    }
+
+    return null;
+  }
+
     return null;
   }
 
