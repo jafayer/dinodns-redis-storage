@@ -1,6 +1,6 @@
 {
   "name": "@dinodns/redis-store",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "description": "A Redis/Valkey storage plugin for DinoDNS",
   "main": "index.js",
   "types": "index.d.ts",
