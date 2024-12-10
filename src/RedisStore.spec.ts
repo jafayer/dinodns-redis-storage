@@ -1,7 +1,7 @@
 import { RedisStore } from '.';
 import Redis from 'ioredis';
 import { RecordType } from 'dns-packet';
-import { ZoneData } from 'dinodns/types/dns';
+import { ZoneData, ZoneDataMap } from 'dinodns/types/dns';
 import _ from 'lodash';
 
 jest.mock('ioredis');
@@ -10,8 +10,10 @@ describe('RedisStore', () => {
   let store: RedisStore;
   let client: Redis;
   const ARecords: ZoneData['A'][] = ['127.0.0.1', '127.0.0.2'];
+  const ARecordMap: Partial<ZoneDataMap> = {"A": ARecords};
 
   const AAAARecords: ZoneData['AAAA'][] = ['::1', '::2'];
+  const AAAARecordMap: Partial<ZoneDataMap> = {"AAAA": AAAARecords};
 
   const internalData = {
     A: JSON.stringify(ARecords),
@@ -63,7 +65,7 @@ describe('RedisStore', () => {
       });
 
       const result = await store.get(name, rType);
-      expect(result).toEqual(ARecords);
+      expect(result).toEqual(ARecordMap);
     });
 
     it('should get data from the exact match', async () => {
@@ -88,13 +90,13 @@ describe('RedisStore', () => {
       });
 
       const result = await store.get(name, rType);
-      expect(result).toEqual(ARecords);
+      expect(result).toEqual(ARecordMap);
 
       const result2 = await store.get(name);
-      expect(result2).toEqual([...ARecords, ...AAAARecords]);
+      expect(result2).toEqual({...ARecordMap, ...AAAARecordMap});
 
       const result3 = await store.get('example.com', 'AAAA');
-      expect(result3).toEqual(AAAARecords);
+      expect(result3).toEqual(AAAARecordMap);
 
       const result4 = await store.get('example.com', 'CNAME');
       expect(result4).toEqual(null);
@@ -169,16 +171,16 @@ describe('RedisStore', () => {
       });
 
       const result = await store.get(name, rType);
-      expect(result).toEqual(ARecords);
+      expect(result).toEqual(ARecordMap);
 
       const result2 = await store.get(name);
-      expect(result2).toEqual([...ARecords, ...AAAARecords]);
+      expect(result2).toEqual({...ARecordMap, ...AAAARecordMap});
 
       const result3 = await store.get('test.com', 'AAAA');
-      expect(result3).toEqual(AAAARecords);
+      expect(result3).toEqual(AAAARecordMap);
 
       const result4 = await store.get('test.com');
-      expect(result4).toEqual([...ARecords, ...AAAARecords]);
+      expect(result4).toEqual({...ARecordMap, ...AAAARecordMap});
 
       const result5 = await store.get('notinthere.net');
       expect(result5).toEqual(null);
@@ -243,7 +245,7 @@ describe('RedisStore', () => {
 
       expect(_.isEqual(internalData['com:example'], { A: JSON.stringify([data]) })).toBe(true);
       const result = await store.get(name, rType);
-      expect(result).toEqual([data]);
+      expect(result).toEqual({A: [data]});
     });
 
     it('should be able to set an array of records', async () => {
@@ -253,7 +255,7 @@ describe('RedisStore', () => {
 
       expect(_.isEqual(internalData['com:example'], { A: JSON.stringify(ARecords) })).toBe(true);
       const result = await store.get(name, 'A');
-      expect(result).toEqual(ARecords);
+      expect(result).toEqual(ARecordMap);
     });
   });
 
@@ -281,7 +283,7 @@ describe('RedisStore', () => {
       await store.append(name, 'A', ARecords[0]);
       expect(JSON.stringify(internalData['com:example'])).toEqual(JSON.stringify({ A: JSON.stringify([ARecords[0]]) }));
       const result = await store.get(name, 'A');
-      expect(result).toEqual([ARecords[0]]);
+      expect(result).toEqual({"A": [ARecords[0]]});
     });
 
     it('should be able to append data when data exists', async () => {
@@ -290,7 +292,7 @@ describe('RedisStore', () => {
       await store.append(name, 'A', ARecords[1]);
       expect(JSON.stringify(internalData['com:example'])).toEqual(JSON.stringify({ A: JSON.stringify(ARecords) }));
       const result = await store.get(name, 'A');
-      expect(result).toEqual(ARecords);
+      expect(result).toEqual(ARecordMap);
     });
   });
 
@@ -344,7 +346,7 @@ describe('RedisStore', () => {
       await store.set(name, 'A', ARecords);
       await store.delete(name, 'A', ARecords[0]);
       const result = await store.get(name, 'A');
-      expect(result).toEqual([ARecords[1]]);
+      expect(result).toEqual({A: [ARecords[1]]});
     });
 
     it('should be able to delete a specific record when no records exist', async () => {
@@ -359,7 +361,7 @@ describe('RedisStore', () => {
       await store.set(name, 'A', ARecords);
       await store.delete(name, 'A', ARecords[0]);
       const result1 = await store.get(name, 'A');
-      expect(result1).toEqual([ARecords[1]]);
+      expect(result1).toEqual({A: [ARecords[1]]});
       await store.delete(name, 'A', ARecords[1]);
       const result2 = await store.get(name, 'A');
       expect(result2).toEqual(null);
