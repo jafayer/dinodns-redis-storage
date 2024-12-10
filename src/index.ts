@@ -1,5 +1,5 @@
 import { Store } from 'dinodns/plugins/storage';
-import { SupportedAnswer, Handler, SupportedRecordType, ZoneData } from 'dinodns/types';
+import { SupportedAnswer, Handler, SupportedRecordType, ZoneData, ZoneDataMap } from 'dinodns/types';
 import Redis from 'ioredis';
 import type { RedisOptions } from 'ioredis';
 import { RecordType } from 'dns-packet';
@@ -42,20 +42,23 @@ export class RedisStore extends EventEmitter implements Store {
     name: string,
     rType?: T,
     wildcards = true,
-  ): Promise<ZoneData[T][] | ZoneData[keyof ZoneData][] | null> {
+  ): Promise<Partial<ZoneDataMap> | null> {
     let key = this.nameToKey(name);
     // first attempt to get the data from the exact match
     if (rType) {
       const data = await this.client.hget(key, rType);
       if (data) {
-        return JSON.parse(data);
+        return {
+          [rType]: JSON.parse(data),
+        }
       }
-    } else {
+    } else { // if no type is provided, get all the data
       const data = await this.client.hgetall(key);
+
       if (data && Object.keys(data).length > 0) {
-        return Object.values(data)
-          .map((d) => JSON.parse(d))
-          .flat();
+        return Object.fromEntries(
+          Object.entries(data).map(([k, v]) => [k, JSON.parse(v)])
+        );
       }
     }
 
@@ -75,14 +78,16 @@ export class RedisStore extends EventEmitter implements Store {
       if (rType) {
         const data = await this.client.hget(wildcardKey, rType);
         if (data) {
-          return JSON.parse(data);
+          return {
+            [rType]: JSON.parse(data),
+          }
         }
       } else {
         const data = await this.client.hgetall(wildcardKey);
         if (data && Object.keys(data).length > 0) {
-          return Object.values(data)
-            .map((d) => JSON.parse(d))
-            .flat();
+          return Object.fromEntries(
+            Object.entries(data).map(([k, v]) => [k, JSON.parse(v)])
+          );
         }
       }
     }
@@ -98,9 +103,9 @@ export class RedisStore extends EventEmitter implements Store {
       } else {
         const data = await this.client.hgetall(wildcardKey);
         if (data && Object.keys(data).length > 0) {
-          return Object.values(data)
-            .map((d) => JSON.parse(d))
-            .flat();
+          return Object.fromEntries(
+            Object.entries(data).map(([k, v]) => [k, JSON.parse(v)])
+          );
         }
       }
     }
@@ -215,18 +220,18 @@ export class RedisStore extends EventEmitter implements Store {
     const { name, type } = req.packet.questions[0];
     const result = await this.get(name, type as Exclude<RecordType, 'OPT'>);
     if (result) {
-      const answers: SupportedAnswer[] = result.map((data) => {
+      const answers: SupportedAnswer[] = Object.entries(result).map(([key, value]) => {
         return {
-          name,
+          name: key,
           type,
-          data,
-        } as SupportedAnswer;
+          data: value,
+        } as SupportedAnswer
       });
 
       res.answer(answers);
 
       if (this.shouldCache) {
-        this.emitCacheRequest(name, type, result);
+        this.emitCacheRequest(name, type, answers.map((a) => a.data));
       }
     }
 
