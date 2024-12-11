@@ -1,8 +1,10 @@
 import { RedisStore } from '.';
 import Redis from 'ioredis';
-import { RecordType } from 'dns-packet';
+import { RecordType, Packet } from 'dns-packet';
 import { ZoneData, ZoneDataMap } from 'dinodns/types/dns';
+import { DNSRequest } from 'dinodns/types';
 import _ from 'lodash';
+import { SupportedNetworkType } from 'dinodns/common';
 
 jest.mock('ioredis');
 
@@ -10,10 +12,10 @@ describe('RedisStore', () => {
   let store: RedisStore;
   let client: Redis;
   const ARecords: ZoneData['A'][] = ['127.0.0.1', '127.0.0.2'];
-  const ARecordMap: Partial<ZoneDataMap> = {"A": ARecords};
+  const ARecordMap: Partial<ZoneDataMap> = { A: ARecords };
 
   const AAAARecords: ZoneData['AAAA'][] = ['::1', '::2'];
-  const AAAARecordMap: Partial<ZoneDataMap> = {"AAAA": AAAARecords};
+  const AAAARecordMap: Partial<ZoneDataMap> = { AAAA: AAAARecords };
 
   const internalData = {
     A: JSON.stringify(ARecords),
@@ -93,7 +95,7 @@ describe('RedisStore', () => {
       expect(result).toEqual(ARecordMap);
 
       const result2 = await store.get(name);
-      expect(result2).toEqual({...ARecordMap, ...AAAARecordMap});
+      expect(result2).toEqual({ ...ARecordMap, ...AAAARecordMap });
 
       const result3 = await store.get('example.com', 'AAAA');
       expect(result3).toEqual(AAAARecordMap);
@@ -174,13 +176,13 @@ describe('RedisStore', () => {
       expect(result).toEqual(ARecordMap);
 
       const result2 = await store.get(name);
-      expect(result2).toEqual({...ARecordMap, ...AAAARecordMap});
+      expect(result2).toEqual({ ...ARecordMap, ...AAAARecordMap });
 
       const result3 = await store.get('test.com', 'AAAA');
       expect(result3).toEqual(AAAARecordMap);
 
       const result4 = await store.get('test.com');
-      expect(result4).toEqual({...ARecordMap, ...AAAARecordMap});
+      expect(result4).toEqual({ ...ARecordMap, ...AAAARecordMap });
 
       const result5 = await store.get('notinthere.net');
       expect(result5).toEqual(null);
@@ -245,7 +247,7 @@ describe('RedisStore', () => {
 
       expect(_.isEqual(internalData['com:example'], { A: JSON.stringify([data]) })).toBe(true);
       const result = await store.get(name, rType);
-      expect(result).toEqual({A: [data]});
+      expect(result).toEqual({ A: [data] });
     });
 
     it('should be able to set an array of records', async () => {
@@ -283,7 +285,7 @@ describe('RedisStore', () => {
       await store.append(name, 'A', ARecords[0]);
       expect(JSON.stringify(internalData['com:example'])).toEqual(JSON.stringify({ A: JSON.stringify([ARecords[0]]) }));
       const result = await store.get(name, 'A');
-      expect(result).toEqual({"A": [ARecords[0]]});
+      expect(result).toEqual({ A: [ARecords[0]] });
     });
 
     it('should be able to append data when data exists', async () => {
@@ -346,7 +348,7 @@ describe('RedisStore', () => {
       await store.set(name, 'A', ARecords);
       await store.delete(name, 'A', ARecords[0]);
       const result = await store.get(name, 'A');
-      expect(result).toEqual({A: [ARecords[1]]});
+      expect(result).toEqual({ A: [ARecords[1]] });
     });
 
     it('should be able to delete a specific record when no records exist', async () => {
@@ -361,7 +363,7 @@ describe('RedisStore', () => {
       await store.set(name, 'A', ARecords);
       await store.delete(name, 'A', ARecords[0]);
       const result1 = await store.get(name, 'A');
-      expect(result1).toEqual({A: [ARecords[1]]});
+      expect(result1).toEqual({ A: [ARecords[1]] });
       await store.delete(name, 'A', ARecords[1]);
       const result2 = await store.get(name, 'A');
       expect(result2).toEqual(null);
@@ -391,6 +393,58 @@ describe('RedisStore', () => {
       const name = '*';
       const key = store.nameToKey(name);
       expect(key).toEqual('*');
+    });
+  });
+
+  describe('handler', () => {
+    beforeEach(() => {
+      client.hget = jest.fn(async (key, rType: 'A' | 'AAAA') => {
+        if (key === 'com:example' && internalData[rType]) {
+          return internalData[rType];
+        }
+
+        return null;
+      });
+
+      client.hgetall = jest.fn(async (key) => {
+        if (key === 'com:example') {
+          return internalData;
+        }
+
+        return {};
+      });
+    });
+
+    it('should be able to handle a DNS request', async () => {
+      const reqPacket: Packet = {
+        type: 'query',
+        id: 0,
+        flags: 0,
+        questions: [
+          {
+            type: 'A',
+            name: 'example.com',
+          },
+        ],
+      };
+      const req = new DNSRequest(reqPacket, {
+        remoteAddress: '127.0.0.1',
+        remotePort: 12345,
+        type: SupportedNetworkType.UDP,
+      });
+
+      const res = req.toAnswer();
+
+      await store.handler(req, res, () => {});
+
+      const expectedAnswers = ARecords.map((data) => ({
+        type: 'A',
+        name: 'example.com',
+        ttl: 300,
+        data,
+      }));
+
+      expect(res.packet.answers).toEqual(expectedAnswers);
     });
   });
 });
