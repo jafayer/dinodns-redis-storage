@@ -50,15 +50,14 @@ export class RedisStore extends EventEmitter implements Store {
       if (data) {
         return {
           [rType]: JSON.parse(data),
-        }
+        };
       }
-    } else { // if no type is provided, get all the data
+    } else {
+      // if no type is provided, get all the data
       const data = await this.client.hgetall(key);
 
       if (data && Object.keys(data).length > 0) {
-        return Object.fromEntries(
-          Object.entries(data).map(([k, v]) => [k, JSON.parse(v)])
-        );
+        return Object.fromEntries(Object.entries(data).map(([k, v]) => [k, JSON.parse(v)]));
       }
     }
 
@@ -80,14 +79,12 @@ export class RedisStore extends EventEmitter implements Store {
         if (data) {
           return {
             [rType]: JSON.parse(data),
-          }
+          };
         }
       } else {
         const data = await this.client.hgetall(wildcardKey);
         if (data && Object.keys(data).length > 0) {
-          return Object.fromEntries(
-            Object.entries(data).map(([k, v]) => [k, JSON.parse(v)])
-          );
+          return Object.fromEntries(Object.entries(data).map(([k, v]) => [k, JSON.parse(v)]));
         }
       }
     }
@@ -103,9 +100,7 @@ export class RedisStore extends EventEmitter implements Store {
       } else {
         const data = await this.client.hgetall(wildcardKey);
         if (data && Object.keys(data).length > 0) {
-          return Object.fromEntries(
-            Object.entries(data).map(([k, v]) => [k, JSON.parse(v)])
-          );
+          return Object.fromEntries(Object.entries(data).map(([k, v]) => [k, JSON.parse(v)]));
         }
       }
     }
@@ -220,18 +215,27 @@ export class RedisStore extends EventEmitter implements Store {
     const { name, type } = req.packet.questions[0];
     const result = await this.get(name, type as Exclude<RecordType, 'OPT'>);
     if (result) {
-      const answers: SupportedAnswer[] = Object.entries(result).map(([key, value]) => {
-        return {
-          name: key,
-          type,
-          data: value,
-        } as SupportedAnswer
-      });
+      const answers: SupportedAnswer[] = Object.entries(result)
+        .map(([key, value]) => {
+          return value.map((data) => {
+            return {
+              name: name,
+              type: key,
+              ttl: 300,
+              data,
+            } as SupportedAnswer;
+          });
+        })
+        .flat();
 
       res.answer(answers);
 
       if (this.shouldCache) {
-        this.emitCacheRequest(name, type, answers.map((a) => a.data));
+        this.emitCacheRequest(
+          name,
+          type,
+          answers.map((a) => a.data),
+        );
       }
     }
 
